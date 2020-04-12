@@ -26,9 +26,10 @@ class Room extends Component {
   }
 
   componentDidMount(){
+    // console.log(this.props.location,window.location.hostname)
 
     // let players = this.state.room.roomData.player_data.length;
-    socket = openSocket(`http://localhost:${socketport}`);
+    socket = openSocket(`http://${window.location.hostname}:${socketport}`);
 
     console.log('this.props.location.pathname', this.props.location.pathname)
 
