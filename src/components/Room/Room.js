@@ -16,12 +16,14 @@ class Room extends Component {
   constructor(props){
     super(props);
     this.state = {
-      rolltime: 18
+      rolltime: 18,
+      cmdr_dmgToggle: 0
     };
 
     this.rolldice = this.rolldice.bind(this)
     this.changePlayerValue = this.changePlayerValue.bind(this)
     this.submitPlayerValue = this.submitPlayerValue.bind(this)
+    this.addCustomValue = this.addCustomValue.bind(this)
 
   }
 
@@ -124,34 +126,33 @@ class Room extends Component {
       })
 
     }
-    
-
-
     this.setState({room: room});
     this.updateRoom(this.state.room);
-
-
-    // console.log('SUBMIT',value, key, index);
-
-    // console.log('end')
   }
+
   addCustomValue(event){
+    console.log('fireing')
     let room = {...this.state.room}
+    // alert('ADDDING')
+    console.log(' ADDING CUSTOM ',room.roomData.player_data[index]);
 
-    let key = event.target.name
-    let type = event.target.type
-    let nested = event.target.attributes.nested.value;
+    let type = event.target.type;
 
-    let index = parseInt(event.target.attributes.index.value),
-        value = event.target.value;
+    let index = parseInt(event.target.attributes.index.value);
+    let value = event.target.value;
 
-
-
-    room.roomData.player_data[index].custom.push({
-      name: value,
+    // event.preventDefault();
+    let field = {
+      name: 'tester',
       type: 'field',
       value: 0
-    });
+    }
+
+
+    room.roomData.player_data[index].custom.push(field);
+    
+    console.log(' ADDED CUSTOM ',room.roomData.player_data[index]);
+
 
     this.setState({room: room});
     this.updateRoom(this.state.room);
@@ -169,7 +170,6 @@ class Room extends Component {
     let index,
         value;
 
-
     if(type === 'number'){
       index = parseInt(event.target.attributes.index.value)
       value = parseInt(event.target.value)
@@ -183,21 +183,26 @@ class Room extends Component {
       let subindex = parseInt(event.target.attributes.subindex.value)
       let subkey = event.target.attributes.subkey.value
 
-      console.log(room.roomData.player_data[index][key][subindex],subkey)
-
+      if(this.state.cmdr_dmgToggle > 0){
+        var difference = function (a, b) { return a-b; }
+        
+        let lifeDifference = difference(room.roomData.player_data[index][key][subindex].dmg, value)
+        
+        room.roomData.player_data[index].life = room.roomData.player_data[index].life + (lifeDifference);
+        console.log('LIF + CMD DMG', room.roomData.player_data[index] , lifeDifference, room.roomData.player_data[index][key][subindex])
+      }
+      
+      console.log(room.roomData.player_data[index])
 
       room.roomData.player_data[index][key][subindex][subkey] = value;
     }else{
       room.roomData.player_data[index][key] = value;
     }
 
-    
-
-
     this.setState({room: room});
     this.updateRoom(this.state.room);
-
   }
+
   rolldice(masterindex){
 
     let room = {...this.state.room}
@@ -215,7 +220,7 @@ class Room extends Component {
           }
         });
         
-        if(index == this.state.rolltime -1){
+        if(index === this.state.rolltime -1){
           room.roomData.dice.rolling = false;
         }
         this.setState({room: room});
@@ -223,7 +228,6 @@ class Room extends Component {
       },delay);
 
     }
-
   }
   render() {
     return (
@@ -237,23 +241,29 @@ class Room extends Component {
             <h1>Room PAGE : {this.state.room.roomNum}</h1>
 
             <div className="row">
-              <div className="row">
-                <button onClick={()=>this.rolldice('all')}>Re-Roll all dice</button>
+              <div className="col-sm-6">
+                <div className="row">
+                  <button onClick={()=>this.rolldice('all')}>Re-Roll all dice</button>
+                </div>
+                <div className="row">
+                  {this.state.room.roomData.dice.dicevalues.map((dice, index) =>
+                    <button 
+                      key={`dice-${index}`} 
+                      className={`dice-${dice.sides}`} 
+                      onClick={()=>this.rolldice(index)}
+                    >
+                      {dice.value}
+                    </button>
+                  )}
+                </div>
               </div>
-              <div className="row">
-                {this.state.room.roomData.dice.dicevalues.map((dice, index) =>
-                  <button 
-                    key={`dice-${index}`} 
-                    className={`dice-${dice.sides}`} 
-                    onClick={()=>this.rolldice(index)}
-                  >
-                    {dice.value}
-                  </button>
-                )}
+              <div className="col-sm-6">
+                <button className={this.state.cmdr_dmgToggle ? 'active' : ''} onClick={()=>this.setState({cmdr_dmgToggle: !this.state.cmdr_dmgToggle})}>Toggle cmdr dmg link</button>
               </div>
+              
               <div className="row">
                 {this.state.room.roomData.player_data.map((player, index) =>
-                  <div key={ player.name} className={`col-xs-12 col-sm-6 playerCard`}>
+                  <div key={ `${player.name}_${index}` } className={`col-xs-12 col-sm-6 playerCard`}>
                     <div className={`playerCard-wrapper`}>
                       <div className={`playerCard-exit`}>
                         <button onClick={()=>this.removePlayer(index)} >X</button>
@@ -270,17 +280,7 @@ class Room extends Component {
                           ></input>
                           <input type="submit" value="^"></input>
                         </form>
-                        {/* <form onSubmit={this.submitPlayerValue}>
-                          <input 
-                            type="number" 
-                            name="life"
-                            placeholder={player.life}
-                            index={index}
-                            className={`playerCard-life`}
-                          ></input>
-                          <input type="submit" value="Submit"></input>
 
-                        </form> */}
                       
                         <input 
                           type="number" 
@@ -295,7 +295,7 @@ class Room extends Component {
 
                         <div className="row playerCard-bigsec">
                           {player.cmdr_dmg.map((player, cmdrIndex)=>
-                            <div className="col-sm-4 cmdrDmg" key={`${player.name}_${player.id}`}>
+                            <div className="col-sm-4 cmdrDmg" key={`${player.name}_${player.id}_${cmdrIndex}`}>
                               <span>{player.name}</span>
 
                               <input 
@@ -317,7 +317,9 @@ class Room extends Component {
                         </div>
 
                         <div className="row">
-                          <form onSubmit={this.submitPlayerValue}>
+
+                          <form onSubmit={this.addCustomValue}>
+                            test herer
                             <input 
                               type="text" 
                               placeholder={'new value'}
@@ -327,21 +329,24 @@ class Room extends Component {
                             <input type="submit" value="^"></input>
                           </form>
 
-                          
                         </div>
                         <div className="row playerCard-bigsec">
                           {player.custom.map((customValue, customIndex)=>
-                            <div className='col-sm-6'>
+                            <div className='col-sm-6' key={`${customValue.name}_${customIndex}`}>
                               {customValue.type == 'field'&&(
-                                  <input 
-                                  type="number" 
-                                  name={customValue.name}
-                                  value={customValue.value}
-                                  index={index}
-                                  nested={0}
-                                  onChange={this.changePlayerValue}
-                                  step={1}
-                                ></input>
+                                  <div className='row'>
+                                    {customValue.name}
+                                    <input 
+                                      type="number" 
+                                      name={customValue.name}
+                                      value={customValue.value}
+                                      index={index}
+                                      nested={0}
+                                      // onChange={this.changePlayerValue}
+                                      step={1}
+                                    ></input>
+                                  </div>
+                                  
                               )}
                               {customValue.type == 'toggle'&&(
                                 <div className={`customtoggle ${customValue.active}`}>
